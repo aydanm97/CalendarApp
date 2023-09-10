@@ -1,0 +1,91 @@
+﻿@page "/"
+@using System.Text.Json;
+
+ 
+@code {
+    // Declaration of variables
+    string monthName = "";
+    DateTime monthEnd;
+    int monthsAway = 0;
+    int year = 2023;
+    int numDummyColumn = 0;
+    int month;
+    List<CalendarItem> items = new List<CalendarItem>();
+
+    // This method is called when the component is initialized
+    protected override async Task OnInitializedAsync()
+    {
+        // Create the initial month and load holidays
+        CreateMonth();
+        await LoadHolidaysAsync();
+    }
+
+    // This method asynchronously loads holidays from the API
+    async Task LoadHolidaysAsync()
+    {
+        var httpClient = new HttpClient();
+        var response = await httpClient.GetFromJsonAsync<List<CalendarItem>>(
+            $"https://date.nager.at/api/v3/publicholidays/2023/DK"
+        );
+        if (response != null)
+        {
+            items = response;
+        }
+    }
+
+    // This method creates the initial month view
+    void CreateMonth()
+    {
+        month = DateTime.Now.Month + monthsAway;
+        year = DateTime.Now.Year;
+
+        year += (month - 1) / 12;
+        month = ((month - 1) % 12) + 1;
+
+        DateTime monthstart = new DateTime(year, month, 1);
+        monthEnd = monthstart.AddMonths(1).AddDays(-1);
+        monthName = monthstart.Month switch
+        {
+            1 => "Januar",
+            2 => "Februar",
+            3 => "Marts",
+            4 => "April",
+            5 => "Maj",
+            6 => "Juni",
+            7 => "Juli",
+            8 => "August",
+            9 => "September",
+            10 => "Oktober",
+            11 => "November",
+            12 => "December",
+            _ => ""
+        };
+        numDummyColumn = (int)monthstart.DayOfWeek;
+    }
+}
+
+<!-- Buttons for navigating to the previous and next months -->
+<button @onclick="() => {monthsAway--; CreateMonth();}">Previous Month</button>
+<h1>@monthName,@year</h1>
+<button @onclick="() => {monthsAway++; CreateMonth();}">Next Month</button>
+
+<!-- Section for displaying the calendar -->
+<section>
+    @for (int i = 0; i < numDummyColumn; i++)
+    {
+        <!-- Dummy columns for alignment -->
+        <div></div>
+    }
+    @for (int i = 1; i <= monthEnd.Day; i++)
+    {
+        var calendarItem = items.FirstOrDefault(n => n.Date == new DateTime(year, month, i));
+        <div>
+            <h2>@i</h2>
+            @if (calendarItem != null)
+            {
+                <!-- Display the local name of the holiday if available -->
+                <p>@calendarItem.LocalName</p>
+            }
+        </div>
+    }
+</section>
